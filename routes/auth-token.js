@@ -1,14 +1,13 @@
 import { Router } from "express";
 import { SignJWT, jwtVerify } from "jose";
-import { USER_BBDD } from "../bbdd.js";
+import userModel from "../schemas/user-schemas.js";
+import validateLoginDTO from "../dto/validate-login-dto.js"
 import authByEmailPwd from "../helpers/auth-by-email-pwd.js";
 
 const authTokenRouter = Router();
 
-authTokenRouter.post("/login", async (req, res) => {
+authTokenRouter.post("/login", validateLoginDTO, async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) return res.sendStatus(400);
 
   try {
     const { guid } = authByEmailPwd(email, password);
@@ -22,7 +21,7 @@ authTokenRouter.post("/login", async (req, res) => {
       .setExpirationTime("1h")
       .sign(encoder.encode(process.env.JWT_PRIVATE_KEY));
 
-    return res.send(jwt);
+    return res.send({jwt});
   } catch (err) {
     return res.sendStatus(401);
   }
@@ -38,7 +37,7 @@ authTokenRouter.get("/profile", async (req, res) => {
         const encoder = new TextEncoder();
         const { payload } = await jwtVerify(authorization, encoder.encode(process.env.JWT_PRIVATE_KEY));
 
-        const user = USER_BBDD.find((user) => user.guid === payload.guid);
+        const user = await userModel.findById(guid).exec();
 
         if (!user) return res.sendStatus(401);
       
@@ -47,11 +46,8 @@ authTokenRouter.get("/profile", async (req, res) => {
         return res.send(user);
 
     }catch(err){
-
+      return res.sendStatus(401);
     }
-
-  //Obtener token de cabecera y comprobar su atuenticidad y caducidad
-
  
 });
 
